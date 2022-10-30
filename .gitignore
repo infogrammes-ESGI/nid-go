@@ -5,6 +5,9 @@
 *.so
 *.dylib
 
+# own program built with "go build"
+nid-go
+
 # Test binary, built with `go test -c`
 *.test
 
