@@ -9,6 +9,7 @@ import (
 	"os"
 	"unicode"
 	"strings"
+	"regexp"
 )
 
 func array_contains(s []string, str string) bool {
@@ -21,6 +22,9 @@ func array_contains(s []string, str string) bool {
 }
 
 var base int
+
+var IPV4_REGEX = regexp.MustCompile(`(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])`)
+var IPV6_REGEX = regexp.MustCompile(`((([0-9a-fA-F]){1,4})\\:){7}([0-9a-fA-F]){1,4}`)
 %}
 
 // fields inside this union end up as the fields in a structure known
@@ -37,6 +41,9 @@ var base int
 %token <string_val> IDENTIFIER
 %token <integer_val> INTEGER
 %token SLASH
+%token DOLLAR
+%token ASTERISK
+%token MINUS
 %token LPAREN
 %token RPAREN
 %token ARROW
@@ -47,7 +54,8 @@ var base int
 %token LCOMMENT
 %token RCOMMENT
 %token ANY_KEYWORD
-%token <string_val> IP_ADDR
+%token <string_val> IPV4_ADDR
+%token <string_val> IPV6_ADDR
 
 
 // functions' type
@@ -57,8 +65,8 @@ var base int
 // arithmetic logic
 %left '|'
 %left '&'
-%left '+'  '-'
-%left '*'  '/'  '%'
+%left '+'  MINUS
+%left ASTERISK  SLASH  '%'
 %left UMINUS      /*  supplies  precedence  for  unary  minus  */
 
 
@@ -70,7 +78,7 @@ rules:		rules rule '\n'
 	;
 
 
-rule:		ACTION_IDENTIFIER PROTO_IDENTIFIER {
+rule:		ACTION_IDENTIFIER PROTO_IDENTIFIER network_range port_range ARROW network_range port_range {
 			var new_rule = Rule{}
 			new_rule.action = $1
 			new_rule.protocol = $2
@@ -82,9 +90,9 @@ rule:		ACTION_IDENTIFIER PROTO_IDENTIFIER {
 
 expr:		'(' expr ')'		{ $$  =  $2 }
 	|	expr '+' expr		{ $$  =  $1 + $3 }
-	|	expr '-' expr		{ $$  =  $1 - $3 }
-	|	expr '*' expr		{ $$  =  $1 * $3 }
-	|	expr '/' expr		{ $$  =  $1 / $3 }
+	|	expr MINUS expr		{ $$  =  $1 - $3 }
+	|	expr ASTERISK expr		{ $$  =  $1 * $3 }
+	|	expr SLASH expr		{ $$  =  $1 / $3 }
 	|	expr '%' expr		{ $$  =  $1 % $3 }
 	|	expr '&' expr		{ $$  =  $1 & $3 }
 	|	expr '|' expr		{ $$  =  $1 | $3 }
@@ -107,7 +115,10 @@ number:		INTEGER
 	;
 
 
-network_range: IP_ADDR {
+network_range: IPV4_ADDR {
+				$$ = $1
+			}
+			|	IPV6_ADDR {
 				$$ = $1
 			}
 			;
@@ -186,7 +197,37 @@ func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 	if unicode.IsDigit(c) {
 		lval.integer_val = int(c) - '0'
 		return INTEGER
-	} else if unicode.IsLetter(c) {
+	} else if c == rune('$') {
+		return DOLLAR
+	} else if c == rune('/') {
+		if l.pos + 1 < len(l.s) && l.s[l.pos+1] == '>' {
+			l.pos += 1
+			return ARROW
+		}
+		return MINUS
+	} else if c == rune('/') {
+		if l.pos + 1 < len(l.s) && l.s[l.pos+1] == '*' {
+			l.pos += 1
+			return LCOMMENT
+		}
+		return SLASH
+	} else if c == rune('(') {
+		return LPAREN
+	} else if c == rune(')') {
+		return RPAREN
+	} else if c == rune('"') {
+		return QUOTE
+	} else if c == rune(',') {
+		return COMMA
+	} else if c == rune(';') {
+		return SEMICOLON
+	} else if c == rune('*') {
+		if l.pos + 1 < len(l.s) && l.s[l.pos+1] == '/' {
+			l.pos += 1
+			return RCOMMENT
+		}
+		return ASTERISK
+	} else if unicode.IsLetter(c) { // read as a word
 		lval.string_val = l.read_until("\n \t")
 
 		if array_contains(LIST_PROTOCOLS, lval.string_val) {
@@ -195,6 +236,10 @@ func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 			return ACTION_IDENTIFIER
 		} else if lval.string_val == "any" {
 			return ANY_KEYWORD
+		} else if IPV4_REGEX.Match([]byte(lval.string_val)) {
+			return IPV4_ADDR
+		} else if IPV6_REGEX.Match([]byte(lval.string_val)) {
+			return IPV6_ADDR
 		}
 		return IDENTIFIER
 	}
