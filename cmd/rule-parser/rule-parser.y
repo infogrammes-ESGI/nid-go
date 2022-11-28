@@ -35,20 +35,24 @@ var base int
 %token <string_val> ACTION_IDENTIFIER
 %token <string_val> PROTO_IDENTIFIER
 %token <string_val> IDENTIFIER
+%token <integer_val> INTEGER
+%token SLASH
 %token LPAREN
 %token RPAREN
 %token ARROW
-%token <integer_val> INTEGER
 %token COLON
 %token QUOTE
 %token COMMA
 %token SEMICOLON
 %token LCOMMENT
 %token RCOMMENT
+%token ANY_KEYWORD
+%token <string_val> IP_ADDR
 
 
 // functions' type
-%type <integer_val> expr number
+%type <integer_val> expr number port_number
+%type <string_val> port_range network_range
 
 // arithmetic logic
 %left '|'
@@ -71,6 +75,7 @@ rule:		ACTION_IDENTIFIER PROTO_IDENTIFIER {
 			new_rule.action = $1
 			new_rule.protocol = $2
 			Add_New_Rule(new_rule)
+			fmt.Printf("RULES = %v\n", Get_rules())
 		}
 	;
 
@@ -99,6 +104,34 @@ number:		INTEGER
 		}
 
 	|    number INTEGER		{ $$ = base * $1 + $2 }
+	;
+
+
+network_range: IP_ADDR {
+				$$ = $1
+			}
+			;
+
+port_range: port_number {
+				$$ = string($1)
+			}
+		|	port_number '-' {
+				$$ = string($1) + "-"
+		}
+		|	'-' port_number {
+				$$ = "-" + string($2)
+		}
+		|	port_number '-' port_number{
+				$$ = string($1) + "-" + string($3)
+		}
+		;
+
+port_number: number {
+		if $1 > 65535 || $1 < 1 {
+			// TODO: throw error
+		}
+		$$ = $1
+	}
 	;
 
 %%
@@ -160,6 +193,8 @@ func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 			return PROTO_IDENTIFIER
 		} else if array_contains(LIST_ACTIONS, lval.string_val) {
 			return ACTION_IDENTIFIER
+		} else if lval.string_val == "any" {
+			return ANY_KEYWORD
 		}
 		return IDENTIFIER
 	}

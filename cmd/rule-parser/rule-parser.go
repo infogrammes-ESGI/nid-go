@@ -38,17 +38,20 @@ const ACTION = 57346
 const ACTION_IDENTIFIER = 57347
 const PROTO_IDENTIFIER = 57348
 const IDENTIFIER = 57349
-const LPAREN = 57350
-const RPAREN = 57351
-const ARROW = 57352
-const INTEGER = 57353
-const COLON = 57354
-const QUOTE = 57355
-const COMMA = 57356
-const SEMICOLON = 57357
-const LCOMMENT = 57358
-const RCOMMENT = 57359
-const UMINUS = 57360
+const INTEGER = 57350
+const SLASH = 57351
+const LPAREN = 57352
+const RPAREN = 57353
+const ARROW = 57354
+const COLON = 57355
+const QUOTE = 57356
+const COMMA = 57357
+const SEMICOLON = 57358
+const LCOMMENT = 57359
+const RCOMMENT = 57360
+const ANY_KEYWORD = 57361
+const IP_ADDR = 57362
+const UMINUS = 57363
 
 var RuleParserToknames = [...]string{
 	"$end",
@@ -58,16 +61,19 @@ var RuleParserToknames = [...]string{
 	"ACTION_IDENTIFIER",
 	"PROTO_IDENTIFIER",
 	"IDENTIFIER",
+	"INTEGER",
+	"SLASH",
 	"LPAREN",
 	"RPAREN",
 	"ARROW",
-	"INTEGER",
 	"COLON",
 	"QUOTE",
 	"COMMA",
 	"SEMICOLON",
 	"LCOMMENT",
 	"RCOMMENT",
+	"ANY_KEYWORD",
+	"IP_ADDR",
 	"'|'",
 	"'&'",
 	"'+'",
@@ -80,24 +86,22 @@ var RuleParserToknames = [...]string{
 	"'('",
 	"')'",
 }
-
 var RuleParserStatenames = [...]string{}
 
 const RuleParserEofCode = 1
 const RuleParserErrCode = 2
 const RuleParserInitialStackSize = 16
 
-//line rule-parser.y:104
+//line rule-parser.y:137
 
 /* START OF GOLANG CODE */
 
 /*
 From: https://pkg.go.dev/golang.org/x/tools/cmd/goyacc
-
-	type yyLexer interface {
-		Lex(lval *yySymType) int
-		Error(e string)
-	}
+type yyLexer interface {
+	Lex(lval *yySymType) int
+	Error(e string)
+}
 */
 type RuleParserLex struct {
 	s   string
@@ -146,6 +150,8 @@ func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 			return PROTO_IDENTIFIER
 		} else if array_contains(LIST_ACTIONS, lval.string_val) {
 			return ACTION_IDENTIFIER
+		} else if lval.string_val == "any" {
+			return ANY_KEYWORD
 		}
 		return IDENTIFIER
 	}
@@ -182,7 +188,7 @@ func readline(fi *bufio.Reader) (string, bool) {
 }
 
 //line yacctab:1
-var RuleParserExca = [...]int8{
+var RuleParserExca = [...]int{
 	-1, 1,
 	1, -1,
 	-2, 0,
@@ -192,58 +198,60 @@ const RuleParserPrivate = 57344
 
 const RuleParserLast = 6
 
-var RuleParserAct = [...]int8{
+var RuleParserAct = [...]int{
+
 	4, 5, 3, 2, 1, 0,
 }
+var RuleParserPact = [...]int{
 
-var RuleParserPact = [...]int16{
-	-1000, -3, -26, -5, -1000, -1000,
+	-1000, -3, -29, -5, -1000, -1000,
 }
+var RuleParserPgo = [...]int{
 
-var RuleParserPgo = [...]int8{
-	0, 5, 5, 4, 3,
+	0, 5, 5, 5, 5, 5, 4, 3,
 }
+var RuleParserR1 = [...]int{
 
-var RuleParserR1 = [...]int8{
-	0, 3, 3, 4, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 2, 2,
+	0, 6, 6, 7, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 2, 2, 5, 4, 4, 4,
+	4, 3,
 }
+var RuleParserR2 = [...]int{
 
-var RuleParserR2 = [...]int8{
 	0, 3, 0, 2, 3, 3, 3, 3, 3, 3,
-	3, 3, 2, 1, 1, 2,
+	3, 3, 2, 1, 1, 2, 1, 1, 2, 2,
+	3, 1,
 }
+var RuleParserChk = [...]int{
 
-var RuleParserChk = [...]int16{
-	-1000, -3, -4, 5, 26, 6,
+	-1000, -6, -7, 5, 29, 6,
 }
+var RuleParserDef = [...]int{
 
-var RuleParserDef = [...]int8{
 	2, -2, 0, 0, 1, 3,
 }
+var RuleParserTok1 = [...]int{
 
-var RuleParserTok1 = [...]int8{
 	1, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	26, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	29, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 24, 19, 3,
-	27, 28, 22, 20, 3, 21, 3, 23, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 27, 22, 3,
+	30, 31, 25, 23, 3, 24, 3, 26, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 18,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 21,
 }
+var RuleParserTok2 = [...]int{
 
-var RuleParserTok2 = [...]int8{
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-	12, 13, 14, 15, 16, 17, 25,
+	12, 13, 14, 15, 16, 17, 18, 19, 20, 28,
 }
-
-var RuleParserTok3 = [...]int8{
+var RuleParserTok3 = [...]int{
 	0,
 }
 
@@ -325,9 +333,9 @@ func RuleParserErrorMessage(state, lookAhead int) string {
 	expected := make([]int, 0, 4)
 
 	// Look for shiftable tokens.
-	base := int(RuleParserPact[state])
+	base := RuleParserPact[state]
 	for tok := TOKSTART; tok-1 < len(RuleParserToknames); tok++ {
-		if n := base + tok; n >= 0 && n < RuleParserLast && int(RuleParserChk[int(RuleParserAct[n])]) == tok {
+		if n := base + tok; n >= 0 && n < RuleParserLast && RuleParserChk[RuleParserAct[n]] == tok {
 			if len(expected) == cap(expected) {
 				return res
 			}
@@ -337,13 +345,13 @@ func RuleParserErrorMessage(state, lookAhead int) string {
 
 	if RuleParserDef[state] == -2 {
 		i := 0
-		for RuleParserExca[i] != -1 || int(RuleParserExca[i+1]) != state {
+		for RuleParserExca[i] != -1 || RuleParserExca[i+1] != state {
 			i += 2
 		}
 
 		// Look for tokens that we accept or reduce.
 		for i += 2; RuleParserExca[i] >= 0; i += 2 {
-			tok := int(RuleParserExca[i])
+			tok := RuleParserExca[i]
 			if tok < TOKSTART || RuleParserExca[i+1] == 0 {
 				continue
 			}
@@ -374,30 +382,30 @@ func RuleParserlex1(lex RuleParserLexer, lval *RuleParserSymType) (char, token i
 	token = 0
 	char = lex.Lex(lval)
 	if char <= 0 {
-		token = int(RuleParserTok1[0])
+		token = RuleParserTok1[0]
 		goto out
 	}
 	if char < len(RuleParserTok1) {
-		token = int(RuleParserTok1[char])
+		token = RuleParserTok1[char]
 		goto out
 	}
 	if char >= RuleParserPrivate {
 		if char < RuleParserPrivate+len(RuleParserTok2) {
-			token = int(RuleParserTok2[char-RuleParserPrivate])
+			token = RuleParserTok2[char-RuleParserPrivate]
 			goto out
 		}
 	}
 	for i := 0; i < len(RuleParserTok3); i += 2 {
-		token = int(RuleParserTok3[i+0])
+		token = RuleParserTok3[i+0]
 		if token == char {
-			token = int(RuleParserTok3[i+1])
+			token = RuleParserTok3[i+1]
 			goto out
 		}
 	}
 
 out:
 	if token == 0 {
-		token = int(RuleParserTok2[1]) /* unknown char */
+		token = RuleParserTok2[1] /* unknown char */
 	}
 	if RuleParserDebug >= 3 {
 		__yyfmt__.Printf("lex %s(%d)\n", RuleParserTokname(token), uint(char))
@@ -452,7 +460,7 @@ RuleParserstack:
 	RuleParserS[RuleParserp].yys = RuleParserstate
 
 RuleParsernewstate:
-	RuleParsern = int(RuleParserPact[RuleParserstate])
+	RuleParsern = RuleParserPact[RuleParserstate]
 	if RuleParsern <= RuleParserFlag {
 		goto RuleParserdefault /* simple state */
 	}
@@ -463,8 +471,8 @@ RuleParsernewstate:
 	if RuleParsern < 0 || RuleParsern >= RuleParserLast {
 		goto RuleParserdefault
 	}
-	RuleParsern = int(RuleParserAct[RuleParsern])
-	if int(RuleParserChk[RuleParsern]) == RuleParsertoken { /* valid shift */
+	RuleParsern = RuleParserAct[RuleParsern]
+	if RuleParserChk[RuleParsern] == RuleParsertoken { /* valid shift */
 		RuleParserrcvr.char = -1
 		RuleParsertoken = -1
 		RuleParserVAL = RuleParserrcvr.lval
@@ -477,7 +485,7 @@ RuleParsernewstate:
 
 RuleParserdefault:
 	/* default state action */
-	RuleParsern = int(RuleParserDef[RuleParserstate])
+	RuleParsern = RuleParserDef[RuleParserstate]
 	if RuleParsern == -2 {
 		if RuleParserrcvr.char < 0 {
 			RuleParserrcvr.char, RuleParsertoken = RuleParserlex1(RuleParserlex, &RuleParserrcvr.lval)
@@ -486,18 +494,18 @@ RuleParserdefault:
 		/* look through exception table */
 		xi := 0
 		for {
-			if RuleParserExca[xi+0] == -1 && int(RuleParserExca[xi+1]) == RuleParserstate {
+			if RuleParserExca[xi+0] == -1 && RuleParserExca[xi+1] == RuleParserstate {
 				break
 			}
 			xi += 2
 		}
 		for xi += 2; ; xi += 2 {
-			RuleParsern = int(RuleParserExca[xi+0])
+			RuleParsern = RuleParserExca[xi+0]
 			if RuleParsern < 0 || RuleParsern == RuleParsertoken {
 				break
 			}
 		}
-		RuleParsern = int(RuleParserExca[xi+1])
+		RuleParsern = RuleParserExca[xi+1]
 		if RuleParsern < 0 {
 			goto ret0
 		}
@@ -519,10 +527,10 @@ RuleParserdefault:
 
 			/* find a state where "error" is a legal shift action */
 			for RuleParserp >= 0 {
-				RuleParsern = int(RuleParserPact[RuleParserS[RuleParserp].yys]) + RuleParserErrCode
+				RuleParsern = RuleParserPact[RuleParserS[RuleParserp].yys] + RuleParserErrCode
 				if RuleParsern >= 0 && RuleParsern < RuleParserLast {
-					RuleParserstate = int(RuleParserAct[RuleParsern]) /* simulate a shift of "error" */
-					if int(RuleParserChk[RuleParserstate]) == RuleParserErrCode {
+					RuleParserstate = RuleParserAct[RuleParsern] /* simulate a shift of "error" */
+					if RuleParserChk[RuleParserstate] == RuleParserErrCode {
 						goto RuleParserstack
 					}
 				}
@@ -558,7 +566,7 @@ RuleParserdefault:
 	RuleParserpt := RuleParserp
 	_ = RuleParserpt // guard against "declared and not used"
 
-	RuleParserp -= int(RuleParserR2[RuleParsern])
+	RuleParserp -= RuleParserR2[RuleParsern]
 	// RuleParserp is now the index of $0. Perform the default action. Iff the
 	// reduced production is ε, $1 is possibly out of range.
 	if RuleParserp+1 >= len(RuleParserS) {
@@ -569,16 +577,16 @@ RuleParserdefault:
 	RuleParserVAL = RuleParserS[RuleParserp+1]
 
 	/* consult goto table to find next state */
-	RuleParsern = int(RuleParserR1[RuleParsern])
-	RuleParserg := int(RuleParserPgo[RuleParsern])
+	RuleParsern = RuleParserR1[RuleParsern]
+	RuleParserg := RuleParserPgo[RuleParsern]
 	RuleParserj := RuleParserg + RuleParserS[RuleParserp].yys + 1
 
 	if RuleParserj >= RuleParserLast {
-		RuleParserstate = int(RuleParserAct[RuleParserg])
+		RuleParserstate = RuleParserAct[RuleParserg]
 	} else {
-		RuleParserstate = int(RuleParserAct[RuleParserj])
-		if int(RuleParserChk[RuleParserstate]) != -RuleParsern {
-			RuleParserstate = int(RuleParserAct[RuleParserg])
+		RuleParserstate = RuleParserAct[RuleParserj]
+		if RuleParserChk[RuleParserstate] != -RuleParsern {
+			RuleParserstate = RuleParserAct[RuleParserg]
 		}
 	}
 	// dummy call; replaced with literal code
@@ -586,70 +594,71 @@ RuleParserdefault:
 
 	case 3:
 		RuleParserDollar = RuleParserS[RuleParserpt-2 : RuleParserpt+1]
-//line rule-parser.y:69
+//line rule-parser.y:73
 		{
 			var new_rule = Rule{}
 			new_rule.action = RuleParserDollar[1].string_val
 			new_rule.protocol = RuleParserDollar[2].string_val
 			Add_New_Rule(new_rule)
+			fmt.Printf("RULES = %v\n", Get_rules())
 		}
 	case 4:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:78
+//line rule-parser.y:83
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[2].integer_val
 		}
 	case 5:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:79
+//line rule-parser.y:84
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val + RuleParserDollar[3].integer_val
 		}
 	case 6:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:80
+//line rule-parser.y:85
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val - RuleParserDollar[3].integer_val
 		}
 	case 7:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:81
+//line rule-parser.y:86
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val * RuleParserDollar[3].integer_val
 		}
 	case 8:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:82
+//line rule-parser.y:87
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val / RuleParserDollar[3].integer_val
 		}
 	case 9:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:83
+//line rule-parser.y:88
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val % RuleParserDollar[3].integer_val
 		}
 	case 10:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:84
+//line rule-parser.y:89
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val & RuleParserDollar[3].integer_val
 		}
 	case 11:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:85
+//line rule-parser.y:90
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val | RuleParserDollar[3].integer_val
 		}
 	case 12:
 		RuleParserDollar = RuleParserS[RuleParserpt-2 : RuleParserpt+1]
-//line rule-parser.y:86
+//line rule-parser.y:91
 		{
 			RuleParserVAL.integer_val = -RuleParserDollar[2].integer_val
 		}
 	case 14:
 		RuleParserDollar = RuleParserS[RuleParserpt-1 : RuleParserpt+1]
-//line rule-parser.y:92
+//line rule-parser.y:97
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val
 			if RuleParserDollar[1].integer_val == 0 {
@@ -660,9 +669,48 @@ RuleParserdefault:
 		}
 	case 15:
 		RuleParserDollar = RuleParserS[RuleParserpt-2 : RuleParserpt+1]
-//line rule-parser.y:101
+//line rule-parser.y:106
 		{
 			RuleParserVAL.integer_val = base*RuleParserDollar[1].integer_val + RuleParserDollar[2].integer_val
+		}
+	case 16:
+		RuleParserDollar = RuleParserS[RuleParserpt-1 : RuleParserpt+1]
+//line rule-parser.y:110
+		{
+			RuleParserVAL.string_val = RuleParserDollar[1].string_val
+		}
+	case 17:
+		RuleParserDollar = RuleParserS[RuleParserpt-1 : RuleParserpt+1]
+//line rule-parser.y:115
+		{
+			RuleParserVAL.string_val = string(RuleParserDollar[1].integer_val)
+		}
+	case 18:
+		RuleParserDollar = RuleParserS[RuleParserpt-2 : RuleParserpt+1]
+//line rule-parser.y:118
+		{
+			RuleParserVAL.string_val = string(RuleParserDollar[1].integer_val) + "-"
+		}
+	case 19:
+		RuleParserDollar = RuleParserS[RuleParserpt-2 : RuleParserpt+1]
+//line rule-parser.y:121
+		{
+			RuleParserVAL.string_val = "-" + string(RuleParserDollar[2].integer_val)
+		}
+	case 20:
+		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
+//line rule-parser.y:124
+		{
+			RuleParserVAL.string_val = string(RuleParserDollar[1].integer_val) + "-" + string(RuleParserDollar[3].integer_val)
+		}
+	case 21:
+		RuleParserDollar = RuleParserS[RuleParserpt-1 : RuleParserpt+1]
+//line rule-parser.y:129
+		{
+			if RuleParserDollar[1].integer_val > 65535 || RuleParserDollar[1].integer_val < 1 {
+				// TODO: throw error
+			}
+			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val
 		}
 	}
 	goto RuleParserstack /* stack new state and value */
