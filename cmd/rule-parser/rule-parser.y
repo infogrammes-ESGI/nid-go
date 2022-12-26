@@ -23,8 +23,13 @@ func array_contains(s []string, str string) bool {
 
 var base int
 
+// it validates simple ip address (e.g. '192.168.1.1') so we need to be careful
+var IPV4_RANGE_REGEX = regexp.MustCompile(`^((([1-9]?\d|[12]\d\d)\.){3}([1-9]?\d|[12]\d\d))?-(((([1-9]?\d|[12]\d\d)\.){3}([1-9]?\d|[12]\d\d)))?$`)
+
 var IPV4_REGEX = regexp.MustCompile(`(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])`)
 var IPV6_REGEX = regexp.MustCompile(`((([0-9a-fA-F]){1,4})\\:){7}([0-9a-fA-F]){1,4}`)
+var PORT_REGEX = regexp.MustCompile(`(?:[1-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])`)
+var PORT_RANGE_REGEX = regexp.MustCompile(`^(?:[1-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?-(?:[1-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?$`)
 var INTEGER_REGEX = regexp.MustCompile(`[0-9]+`)
 %}
 
@@ -54,9 +59,12 @@ var INTEGER_REGEX = regexp.MustCompile(`[0-9]+`)
 %token SEMICOLON
 %token LCOMMENT
 %token RCOMMENT
-%token ANY_KEYWORD
+%token <string_val> ANY_KEYWORD
 %token <string_val> IPV4_ADDR
+%token <string_val> IPV4_RANGE
 %token <string_val> IPV6_ADDR
+%token <string_val> IPV6_RANGE
+%token <string_val> PORT_RANGE
 
 
 // functions' type
@@ -79,10 +87,14 @@ rules:		rules rule
 	;
 
 
-rule:		ACTION_IDENTIFIER PROTO_IDENTIFIER {
+rule:		ACTION_IDENTIFIER PROTO_IDENTIFIER network_range port_range ARROW network_range port_range {
 			var new_rule = Rule{}
 			new_rule.action = $1
 			new_rule.protocol = $2
+			new_rule.in_network = $3
+			new_rule.in_ports = $4
+			new_rule.out_network = $6
+			new_rule.out_ports = $7
 			Add_New_Rule(new_rule)
 			fmt.Printf("RULES = %v\n", Get_rules())
 		}
@@ -116,27 +128,15 @@ number:		INTEGER
 	;
 
 
-network_range: IPV4_ADDR {
-				$$ = $1
-			}
-			|	IPV6_ADDR {
-				$$ = $1
-			}
-			;
-
-port_range: port_number {
-				$$ = string($1)
-			}
-		|	port_number '-' {
-				$$ = string($1) + "-"
-		}
-		|	'-' port_number {
-				$$ = "-" + string($2)
-		}
-		|	port_number '-' port_number{
-				$$ = string($1) + "-" + string($3)
-		}
+network_range: 	IPV4_RANGE
+		|	IPV6_RANGE
+		|	ANY_KEYWORD
 		;
+
+port_range: 	PORT_RANGE
+		|	ANY_KEYWORD
+		;
+
 
 port_number: number {
 		if $1 > 65535 || $1 < 1 {
@@ -213,9 +213,12 @@ func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 		return SLASH
 	} else if token == "-" {
 		return MINUS
+	} else if token == "->" {
+		return ARROW
 	} else if token == "*" {
 		return ASTERISK
 	} else if token == "any" {
+		lval.string_val = "any" // need to specify it because we will store it as port or network range in the final struct
 		return ANY_KEYWORD
 	} else if array_contains(LIST_PROTOCOLS, token) {
 		lval.string_val = token
@@ -223,9 +226,15 @@ func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 	} else if array_contains(LIST_ACTIONS, token) {
 		lval.string_val = token
 		return ACTION_IDENTIFIER
+	} else if PORT_RANGE_REGEX.Match([]byte(token)) {
+		lval.string_val = token
+		return PORT_RANGE
 	} else if IPV4_REGEX.Match([]byte(token)) {
 		lval.string_val = token
 		return IPV4_ADDR
+	} else if IPV4_RANGE_REGEX.Match([]byte(token)) {
+		lval.string_val = token
+		return IPV4_RANGE
 	} else if IPV6_REGEX.Match([]byte(token)) {
 		lval.string_val = token
 		return IPV6_ADDR
@@ -237,7 +246,6 @@ func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 		return IDENTIFIER
 	}
 
-	
 	return int(c)
 }
 

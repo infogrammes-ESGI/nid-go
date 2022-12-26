@@ -7,9 +7,9 @@ type Rule struct {
 	action      string
 	protocol    string
 	in_network  string
-	in_port     string // -1 if 'any'
+	in_ports    string
 	out_network string
-	out_port    string // -1 if 'any'
+	out_ports   string
 	condition   string // TODO: change to RuleCondition[]
 }
 

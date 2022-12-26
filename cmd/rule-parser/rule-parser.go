@@ -28,11 +28,16 @@ func array_contains(s []string, str string) bool {
 
 var base int
 
+// it validates simple ip address (e.g. '192.168.1.1') so we need to be careful
+var IPV4_RANGE_REGEX = regexp.MustCompile(`^((([1-9]?\d|[12]\d\d)\.){3}([1-9]?\d|[12]\d\d))?-(((([1-9]?\d|[12]\d\d)\.){3}([1-9]?\d|[12]\d\d)))?$`)
+
 var IPV4_REGEX = regexp.MustCompile(`(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])`)
 var IPV6_REGEX = regexp.MustCompile(`((([0-9a-fA-F]){1,4})\\:){7}([0-9a-fA-F]){1,4}`)
+var PORT_REGEX = regexp.MustCompile(`(?:[1-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])`)
+var PORT_RANGE_REGEX = regexp.MustCompile(`^(?:[1-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?-(?:[1-9]|[1-9][0-9]{1,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?$`)
 var INTEGER_REGEX = regexp.MustCompile(`[0-9]+`)
 
-//line rule-parser.y:33
+//line rule-parser.y:38
 type RuleParserSymType struct {
 	yys         int
 	integer_val int
@@ -59,8 +64,11 @@ const LCOMMENT = 57362
 const RCOMMENT = 57363
 const ANY_KEYWORD = 57364
 const IPV4_ADDR = 57365
-const IPV6_ADDR = 57366
-const UMINUS = 57367
+const IPV4_RANGE = 57366
+const IPV6_ADDR = 57367
+const IPV6_RANGE = 57368
+const PORT_RANGE = 57369
+const UMINUS = 57370
 
 var RuleParserToknames = [...]string{
 	"$end",
@@ -86,7 +94,10 @@ var RuleParserToknames = [...]string{
 	"RCOMMENT",
 	"ANY_KEYWORD",
 	"IPV4_ADDR",
+	"IPV4_RANGE",
 	"IPV6_ADDR",
+	"IPV6_RANGE",
+	"PORT_RANGE",
 	"'|'",
 	"'&'",
 	"'+'",
@@ -170,9 +181,12 @@ func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 		return SLASH
 	} else if token == "-" {
 		return MINUS
+	} else if token == "->" {
+		return ARROW
 	} else if token == "*" {
 		return ASTERISK
 	} else if token == "any" {
+		lval.string_val = "any" // need to specify it because we will store it as port or network range in the final struct
 		return ANY_KEYWORD
 	} else if array_contains(LIST_PROTOCOLS, token) {
 		lval.string_val = token
@@ -180,9 +194,15 @@ func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 	} else if array_contains(LIST_ACTIONS, token) {
 		lval.string_val = token
 		return ACTION_IDENTIFIER
+	} else if PORT_RANGE_REGEX.Match([]byte(token)) {
+		lval.string_val = token
+		return PORT_RANGE
 	} else if IPV4_REGEX.Match([]byte(token)) {
 		lval.string_val = token
 		return IPV4_ADDR
+	} else if IPV4_RANGE_REGEX.Match([]byte(token)) {
+		lval.string_val = token
+		return IPV4_RANGE
 	} else if IPV6_REGEX.Match([]byte(token)) {
 		lval.string_val = token
 		return IPV6_ADDR
@@ -235,46 +255,51 @@ var RuleParserExca = [...]int8{
 
 const RuleParserPrivate = 57344
 
-const RuleParserLast = 5
+const RuleParserLast = 21
 
 var RuleParserAct = [...]int8{
-	4, 3, 2, 1, 0,
+	11, 12, 8, 9, 6, 10, 7, 5, 4, 3,
+	2, 1, 0, 0, 0, 0, 0, 14, 0, 0,
+	13,
 }
 
 var RuleParserPact = [...]int16{
-	-1000, -4, -1000, -6, -1000,
+	-1000, 4, -1000, 2, -20, -22, -1000, -1000, -1000, -14,
+	-1000, -1000, -20, -22, -1000,
 }
 
 var RuleParserPgo = [...]int8{
-	0, 4, 4, 4, 4, 4, 3, 2,
+	0, 12, 12, 12, 3, 7, 11, 10,
 }
 
 var RuleParserR1 = [...]int8{
 	0, 6, 6, 7, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 2, 2, 5, 5, 4, 4,
-	4, 4, 3,
+	1, 1, 1, 1, 2, 2, 5, 5, 5, 4,
+	4, 3,
 }
 
 var RuleParserR2 = [...]int8{
-	0, 2, 0, 2, 3, 3, 3, 3, 3, 3,
-	3, 3, 2, 1, 1, 2, 1, 1, 1, 2,
-	2, 3, 1,
+	0, 2, 0, 7, 3, 3, 3, 3, 3, 3,
+	3, 3, 2, 1, 1, 2, 1, 1, 1, 1,
+	1, 1,
 }
 
 var RuleParserChk = [...]int16{
-	-1000, -6, -7, 5, 6,
+	-1000, -6, -7, 5, 6, -5, 24, 26, 22, -4,
+	27, 22, 15, -5, -4,
 }
 
 var RuleParserDef = [...]int8{
-	2, -2, 1, 0, 3,
+	2, -2, 1, 0, 0, 0, 16, 17, 18, 0,
+	19, 20, 0, 0, 3,
 }
 
 var RuleParserTok1 = [...]int8{
 	1, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 28, 26, 3,
-	30, 31, 3, 27, 3, 32, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 31, 29, 3,
+	33, 34, 3, 30, 3, 35, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
@@ -282,13 +307,13 @@ var RuleParserTok1 = [...]int8{
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 25,
+	3, 3, 3, 3, 28,
 }
 
 var RuleParserTok2 = [...]int8{
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-	22, 23, 24, 29,
+	22, 23, 24, 25, 26, 27, 32,
 }
 
 var RuleParserTok3 = [...]int8{
@@ -633,72 +658,76 @@ RuleParserdefault:
 	switch RuleParsernt {
 
 	case 3:
-		RuleParserDollar = RuleParserS[RuleParserpt-2 : RuleParserpt+1]
-//line rule-parser.y:82
+		RuleParserDollar = RuleParserS[RuleParserpt-7 : RuleParserpt+1]
+//line rule-parser.y:90
 		{
 			var new_rule = Rule{}
 			new_rule.action = RuleParserDollar[1].string_val
 			new_rule.protocol = RuleParserDollar[2].string_val
+			new_rule.in_network = RuleParserDollar[3].string_val
+			new_rule.in_ports = RuleParserDollar[4].string_val
+			new_rule.out_network = RuleParserDollar[6].string_val
+			new_rule.out_ports = RuleParserDollar[7].string_val
 			Add_New_Rule(new_rule)
 			fmt.Printf("RULES = %v\n", Get_rules())
 		}
 	case 4:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:92
+//line rule-parser.y:104
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[2].integer_val
 		}
 	case 5:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:93
+//line rule-parser.y:105
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val + RuleParserDollar[3].integer_val
 		}
 	case 6:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:94
+//line rule-parser.y:106
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val - RuleParserDollar[3].integer_val
 		}
 	case 7:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:95
+//line rule-parser.y:107
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val * RuleParserDollar[3].integer_val
 		}
 	case 8:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:96
+//line rule-parser.y:108
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val / RuleParserDollar[3].integer_val
 		}
 	case 9:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:97
+//line rule-parser.y:109
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val % RuleParserDollar[3].integer_val
 		}
 	case 10:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:98
+//line rule-parser.y:110
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val & RuleParserDollar[3].integer_val
 		}
 	case 11:
 		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:99
+//line rule-parser.y:111
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val | RuleParserDollar[3].integer_val
 		}
 	case 12:
 		RuleParserDollar = RuleParserS[RuleParserpt-2 : RuleParserpt+1]
-//line rule-parser.y:100
+//line rule-parser.y:112
 		{
 			RuleParserVAL.integer_val = -RuleParserDollar[2].integer_val
 		}
 	case 14:
 		RuleParserDollar = RuleParserS[RuleParserpt-1 : RuleParserpt+1]
-//line rule-parser.y:106
+//line rule-parser.y:118
 		{
 			RuleParserVAL.integer_val = RuleParserDollar[1].integer_val
 			if RuleParserDollar[1].integer_val == 0 {
@@ -709,47 +738,11 @@ RuleParserdefault:
 		}
 	case 15:
 		RuleParserDollar = RuleParserS[RuleParserpt-2 : RuleParserpt+1]
-//line rule-parser.y:115
+//line rule-parser.y:127
 		{
 			RuleParserVAL.integer_val = base*RuleParserDollar[1].integer_val + RuleParserDollar[2].integer_val
 		}
-	case 16:
-		RuleParserDollar = RuleParserS[RuleParserpt-1 : RuleParserpt+1]
-//line rule-parser.y:119
-		{
-			RuleParserVAL.string_val = RuleParserDollar[1].string_val
-		}
-	case 17:
-		RuleParserDollar = RuleParserS[RuleParserpt-1 : RuleParserpt+1]
-//line rule-parser.y:122
-		{
-			RuleParserVAL.string_val = RuleParserDollar[1].string_val
-		}
-	case 18:
-		RuleParserDollar = RuleParserS[RuleParserpt-1 : RuleParserpt+1]
-//line rule-parser.y:127
-		{
-			RuleParserVAL.string_val = string(RuleParserDollar[1].integer_val)
-		}
-	case 19:
-		RuleParserDollar = RuleParserS[RuleParserpt-2 : RuleParserpt+1]
-//line rule-parser.y:130
-		{
-			RuleParserVAL.string_val = string(RuleParserDollar[1].integer_val) + "-"
-		}
-	case 20:
-		RuleParserDollar = RuleParserS[RuleParserpt-2 : RuleParserpt+1]
-//line rule-parser.y:133
-		{
-			RuleParserVAL.string_val = "-" + string(RuleParserDollar[2].integer_val)
-		}
 	case 21:
-		RuleParserDollar = RuleParserS[RuleParserpt-3 : RuleParserpt+1]
-//line rule-parser.y:136
-		{
-			RuleParserVAL.string_val = string(RuleParserDollar[1].integer_val) + "-" + string(RuleParserDollar[3].integer_val)
-		}
-	case 22:
 		RuleParserDollar = RuleParserS[RuleParserpt-1 : RuleParserpt+1]
 //line rule-parser.y:141
 		{
