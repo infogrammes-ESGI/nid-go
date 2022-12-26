@@ -3,13 +3,13 @@ state 0
 	$accept: .rules $end 
 	rules: .    (2)
 
-	.  reduce 2 (src line 77)
+	.  reduce 2 (src line 78)
 
 	rules  goto 1
 
 state 1
 	$accept:  rules.$end 
-	rules:  rules.rule '\n' 
+	rules:  rules.rule 
 
 	$end  accept
 	ACTION_IDENTIFIER  shift 3
@@ -18,148 +18,22 @@ state 1
 	rule  goto 2
 
 state 2
-	rules:  rules rule.'\n' 
+	rules:  rules rule.    (1)
 
-	'\n'  shift 4
-	.  error
+	.  reduce 1 (src line 77)
 
 
 state 3
-	rule:  ACTION_IDENTIFIER.PROTO_IDENTIFIER network_range port_range ARROW network_range port_range 
+	rule:  ACTION_IDENTIFIER.PROTO_IDENTIFIER 
 
-	PROTO_IDENTIFIER  shift 5
+	PROTO_IDENTIFIER  shift 4
 	.  error
 
 
 state 4
-	rules:  rules rule '\n'.    (1)
+	rule:  ACTION_IDENTIFIER PROTO_IDENTIFIER.    (3)
 
-	.  reduce 1 (src line 76)
-
-
-state 5
-	rule:  ACTION_IDENTIFIER PROTO_IDENTIFIER.network_range port_range ARROW network_range port_range 
-
-	IPV4_ADDR  shift 7
-	IPV6_ADDR  shift 8
-	.  error
-
-	network_range  goto 6
-
-state 6
-	rule:  ACTION_IDENTIFIER PROTO_IDENTIFIER network_range.port_range ARROW network_range port_range 
-
-	INTEGER  shift 13
-	'-'  shift 11
-	.  error
-
-	number  goto 12
-	port_number  goto 10
-	port_range  goto 9
-
-state 7
-	network_range:  IPV4_ADDR.    (16)
-
-	.  reduce 16 (src line 118)
-
-
-state 8
-	network_range:  IPV6_ADDR.    (17)
-
-	.  reduce 17 (src line 121)
-
-
-state 9
-	rule:  ACTION_IDENTIFIER PROTO_IDENTIFIER network_range port_range.ARROW network_range port_range 
-
-	ARROW  shift 14
-	.  error
-
-
-state 10
-	port_range:  port_number.    (18)
-	port_range:  port_number.'-' 
-	port_range:  port_number.'-' port_number 
-
-	'-'  shift 15
-	.  reduce 18 (src line 126)
-
-
-state 11
-	port_range:  '-'.port_number 
-
-	INTEGER  shift 13
-	.  error
-
-	number  goto 12
-	port_number  goto 16
-
-state 12
-	number:  number.INTEGER 
-	port_number:  number.    (22)
-
-	INTEGER  shift 17
-	.  reduce 22 (src line 140)
-
-
-state 13
-	number:  INTEGER.    (14)
-
-	.  reduce 14 (src line 104)
-
-
-state 14
-	rule:  ACTION_IDENTIFIER PROTO_IDENTIFIER network_range port_range ARROW.network_range port_range 
-
-	IPV4_ADDR  shift 7
-	IPV6_ADDR  shift 8
-	.  error
-
-	network_range  goto 18
-
-state 15
-	port_range:  port_number '-'.    (19)
-	port_range:  port_number '-'.port_number 
-
-	INTEGER  shift 13
-	.  reduce 19 (src line 129)
-
-	number  goto 12
-	port_number  goto 19
-
-state 16
-	port_range:  '-' port_number.    (20)
-
-	.  reduce 20 (src line 132)
-
-
-state 17
-	number:  number INTEGER.    (15)
-
-	.  reduce 15 (src line 114)
-
-
-state 18
-	rule:  ACTION_IDENTIFIER PROTO_IDENTIFIER network_range port_range ARROW network_range.port_range 
-
-	INTEGER  shift 13
-	'-'  shift 11
-	.  error
-
-	number  goto 12
-	port_number  goto 10
-	port_range  goto 20
-
-state 19
-	port_range:  port_number '-' port_number.    (21)
-
-	.  reduce 21 (src line 135)
-
-
-state 20
-	rule:  ACTION_IDENTIFIER PROTO_IDENTIFIER network_range port_range ARROW network_range port_range.    (3)
-
-	.  reduce 3 (src line 81)
+	.  reduce 3 (src line 82)
 
 Rule not reduced: expr:  '(' expr ')' 
 Rule not reduced: expr:  expr '+' expr 
@@ -171,16 +45,25 @@ Rule not reduced: expr:  expr '&' expr
 Rule not reduced: expr:  expr '|' expr 
 Rule not reduced: expr:  '-' expr 
 Rule not reduced: expr:  number 
+Rule not reduced: number:  INTEGER 
+Rule not reduced: number:  number INTEGER 
+Rule not reduced: network_range:  IPV4_ADDR 
+Rule not reduced: network_range:  IPV6_ADDR 
+Rule not reduced: port_range:  port_number 
+Rule not reduced: port_range:  port_number '-' 
+Rule not reduced: port_range:  '-' port_number 
+Rule not reduced: port_range:  port_number '-' port_number 
+Rule not reduced: port_number:  number 
 
-33 terminals, 8 nonterminals
-23 grammar rules, 21/8000 states
+32 terminals, 8 nonterminals
+23 grammar rules, 5/16000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
 57 working sets used
-memory: parser 13/120000
-8 extra closures
-16 shift entries, 1 exceptions
-11 goto entries
-3 entries saved by goto default
-Optimizer space used: output 27/120000
-27 table entries, 6 zero
-maximum spread: 33, maximum offset: 33
+memory: parser 1/240000
+0 extra closures
+2 shift entries, 1 exceptions
+7 goto entries
+-5 entries saved by goto default
+Optimizer space used: output 5/240000
+5 table entries, 1 zero
+maximum spread: 6, maximum offset: 6

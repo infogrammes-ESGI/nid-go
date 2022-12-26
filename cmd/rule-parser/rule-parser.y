@@ -7,7 +7,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"unicode"
+	"strconv"
 	"strings"
 	"regexp"
 )
@@ -25,6 +25,7 @@ var base int
 
 var IPV4_REGEX = regexp.MustCompile(`(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])`)
 var IPV6_REGEX = regexp.MustCompile(`((([0-9a-fA-F]){1,4})\\:){7}([0-9a-fA-F]){1,4}`)
+var INTEGER_REGEX = regexp.MustCompile(`[0-9]+`)
 %}
 
 // fields inside this union end up as the fields in a structure known
@@ -73,12 +74,12 @@ var IPV6_REGEX = regexp.MustCompile(`((([0-9a-fA-F]){1,4})\\:){7}([0-9a-fA-F]){1
 /* START OF GRAMMAR */
 %%
 
-rules:		rules rule '\n'
+rules:		rules rule
     	|	/* nothing */
 	;
 
 
-rule:		ACTION_IDENTIFIER PROTO_IDENTIFIER network_range port_range ARROW network_range port_range {
+rule:		ACTION_IDENTIFIER PROTO_IDENTIFIER {
 			var new_rule = Rule{}
 			new_rule.action = $1
 			new_rule.protocol = $2
@@ -187,62 +188,56 @@ func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 		}
 
 		c = rune(l.s[l.pos])
-		if c == ' ' {
+		if c == ' ' || c == '\n' {
 			l.pos += 1
 			continue
 		}
 		break
 	}
-
-	if unicode.IsDigit(c) {
-		lval.integer_val = int(c) - '0'
-		return INTEGER
-	} else if c == rune('$') {
-		return DOLLAR
-	} else if c == rune('/') {
-		if l.pos + 1 < len(l.s) && l.s[l.pos+1] == '>' {
-			l.pos += 1
-			return ARROW
-		}
-		return MINUS
-	} else if c == rune('/') {
-		if l.pos + 1 < len(l.s) && l.s[l.pos+1] == '*' {
-			l.pos += 1
-			return LCOMMENT
-		}
-		return SLASH
-	} else if c == rune('(') {
+	
+	var token string = l.read_until("\n \t")
+	
+	if token == "(" {
 		return LPAREN
-	} else if c == rune(')') {
+	} else if token == ")" {
 		return RPAREN
-	} else if c == rune('"') {
+	} else if token == "\"" {
 		return QUOTE
-	} else if c == rune(',') {
+	} else if token == "," {
 		return COMMA
-	} else if c == rune(';') {
+	} else if token == "$" {
+		return DOLLAR
+	} else if token == ";" {
 		return SEMICOLON
-	} else if c == rune('*') {
-		if l.pos + 1 < len(l.s) && l.s[l.pos+1] == '/' {
-			l.pos += 1
-			return RCOMMENT
-		}
+	} else if token == "/" {
+		return SLASH
+	} else if token == "-" {
+		return MINUS
+	} else if token == "*" {
 		return ASTERISK
-	} else if unicode.IsLetter(c) { // read as a word
-		lval.string_val = l.read_until("\n \t")
-
-		if array_contains(LIST_PROTOCOLS, lval.string_val) {
-			return PROTO_IDENTIFIER
-		} else if array_contains(LIST_ACTIONS, lval.string_val) {
-			return ACTION_IDENTIFIER
-		} else if lval.string_val == "any" {
-			return ANY_KEYWORD
-		} else if IPV4_REGEX.Match([]byte(lval.string_val)) {
-			return IPV4_ADDR
-		} else if IPV6_REGEX.Match([]byte(lval.string_val)) {
-			return IPV6_ADDR
-		}
+	} else if token == "any" {
+		return ANY_KEYWORD
+	} else if array_contains(LIST_PROTOCOLS, token) {
+		lval.string_val = token
+		return PROTO_IDENTIFIER
+	} else if array_contains(LIST_ACTIONS, token) {
+		lval.string_val = token
+		return ACTION_IDENTIFIER
+	} else if IPV4_REGEX.Match([]byte(token)) {
+		lval.string_val = token
+		return IPV4_ADDR
+	} else if IPV6_REGEX.Match([]byte(token)) {
+		lval.string_val = token
+		return IPV6_ADDR
+	} else if INTEGER_REGEX.Match([]byte(token)) {
+		lval.integer_val, _ = strconv.Atoi(token)
+		return INTEGER
+	} else {
+		lval.string_val = token
 		return IDENTIFIER
 	}
+
+	
 	return int(c)
 }
 
