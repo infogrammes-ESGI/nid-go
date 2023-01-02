@@ -1,12 +1,10 @@
 // golang headers
 %{
 
-package main
+package ruleparser
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"regexp"
@@ -159,7 +157,7 @@ type yyLexer interface {
 }
 */
 type RuleParserLex struct {
-	s string
+	S string
 	pos int
 }
 
@@ -169,11 +167,11 @@ func (l *RuleParserLex) read_until(characters string) string {
 	*/
 	var res = make([]rune, 0)
 
-	for !strings.ContainsRune(characters, rune(l.s[l.pos])) {
-		res = append(res, rune(l.s[l.pos]))
+	for !strings.ContainsRune(characters, rune(l.S[l.pos])) {
+		res = append(res, rune(l.S[l.pos]))
 		l.pos += 1
 
-		if l.pos == len(l.s) {
+		if l.pos == len(l.S) {
 			return string(res)
 		}
 	}
@@ -183,11 +181,11 @@ func (l *RuleParserLex) read_until(characters string) string {
 func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 	var c rune
 	for {
-		if l.pos == len(l.s) {
+		if l.pos == len(l.S) {
 			return 0
 		}
 
-		c = rune(l.s[l.pos])
+		c = rune(l.S[l.pos])
 		if c == ' ' || c == '\n' {
 			l.pos += 1
 			continue
@@ -252,29 +250,4 @@ func (l *RuleParserLex) Lex(lval *RuleParserSymType) int {
 func (l *RuleParserLex) Error(s string) {
 	// TODO: syslog the error
 	fmt.Printf("Rule-Parser error: %s\n", s)
-}
-
-
-func main() {
-	fi := bufio.NewReader(os.NewFile(0, "stdin"))
-
-	for {
-		var eqn string
-		var ok bool
-
-		fmt.Printf("Rule: ")
-		if eqn, ok = readline(fi); ok {
-			RuleParserParse(&RuleParserLex{s: eqn})
-		} else {
-			break
-		}
-	}
-}
-
-func readline(fi *bufio.Reader) (string, bool) {
-	s, err := fi.ReadString('\n')
-	if err != nil {
-		return "", false
-	}
-	return s, true
 }

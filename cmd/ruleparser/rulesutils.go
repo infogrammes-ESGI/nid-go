@@ -1,4 +1,4 @@
-package main
+package ruleparser
 
 var LIST_PROTOCOLS = []string{"tcp", "udp", "icmp", "http", "ip", "ssh", "tls", "ssl"}
 var LIST_ACTIONS = []string{"alert", "log", "pass"}
